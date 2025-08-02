@@ -41,6 +41,13 @@ func main() {
 	}
 	fmt.Println(event4)
 
+	event5, err5 := calendar.DeleteEvent("Бадминтон")
+	if err5 != nil {
+		fmt.Println(err5)
+		return
+	}
+	fmt.Println(event5)
+
 	calendar.ShowEvents()
 	fmt.Scanln()
 }

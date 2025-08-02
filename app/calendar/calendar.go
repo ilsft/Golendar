@@ -8,17 +8,17 @@ import (
 
 const (
 	EventAddedMessage        = "Событие: %s добавлено"
-	EventDeleteMessage       = "Событие: %s удалено\n"
+	EventDeleteMessage       = "Событие: %s удалено"
 	EventEditTitleMessage    = "Имя события: %s изменено на: %s"
 	EventEditDateMessage     = "Дата события: %s изменена на: %v"
-	EventEditPriorityMessage = "Приоритет события: %s изменена на: %v \n"
+	EventEditPriorityMessage = "Приоритет события: %s изменена на: %v"
 	EventShowMessage         = "/////Cписок событий/////"
 )
 
 const (
-	ErrorNotFoundDeleteEvent = "При удалении не найдено событие: %s \n"
+	ErrorNotFoundDeleteEvent = "при удалении не найдено событие: %s"
 	ErrorParseMessage        = "%v в событии: %s"
-	ErrAddEvent              = "%v при добавлении: %s\n"
+	ErrAddEvent              = "%v при добавлении: %s"
 )
 
 func AddEvent(title string, dateStr string, priority events.Priority) (string, error) {
@@ -38,14 +38,14 @@ func ShowEvents() {
 	}
 }
 
-func DeleteEvent(title string) {
+func DeleteEvent(title string) (string, error) {
 	titleID, found := events.SearchID(title)
 	if !found {
-		fmt.Printf(ErrorNotFoundDeleteEvent, title)
-		return
+		return "", fmt.Errorf(ErrorNotFoundDeleteEvent, title)
 	}
 	delete(events.EventsMap, titleID)
-	fmt.Printf(EventDeleteMessage, title)
+	message := fmt.Sprintf(EventDeleteMessage, title)
+	return message, nil
 }
 
 func EditTitleEvent(oldTitle string, newTitle string) (string, error) {
