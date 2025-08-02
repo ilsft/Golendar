@@ -6,82 +6,87 @@ import (
 	"github.com/ilsft/app/events"
 )
 
-const timePattern = "Mon 2006/01/02 - 15:04"
 const (
-	EventAddedMessage  = "Событие: %s добавлено\n"
-	EventDeleteMessage = "Событие: %s удалено\n"
-	EventEditMessage   = "Событие: %s изменено\n"
-	EventShowMessage   = "/////Cписок событий/////"
+	EventAddedMessage        = "Событие: %s добавлено"
+	EventDeleteMessage       = "Событие: %s удалено\n"
+	EventEditTitleMessage    = "Имя события: %s изменено на: %s"
+	EventEditDateMessage     = "Дата события: %s изменена на: %v"
+	EventEditPriorityMessage = "Приоритет события: %s изменена на: %v \n"
+	EventShowMessage         = "/////Cписок событий/////"
 )
 
 const (
 	ErrorNotFoundDeleteEvent = "При удалении не найдено событие: %s \n"
-	ErrorNotFoundEditEvent   = "При изменении не найдено событие: %s \n"
-	ErrorParseMessage        = "%v в событии: %s\n"
+	ErrorParseMessage        = "%v в событии: %s"
 	ErrAddEvent              = "%v при добавлении: %s\n"
 )
 
-var EventsMap = make(map[string]events.Event)
-
-func AddEvent(title string, dateStr string, priority events.Priority) {
+func AddEvent(title string, dateStr string, priority events.Priority) (string, error) {
 	event, err := events.NewEvent(title, dateStr, priority)
 	if err != nil {
-		fmt.Printf(ErrAddEvent, err, title)
-		return
+		return (""), err
 	}
-	EventsMap[event.ID] = event
-	fmt.Printf(EventAddedMessage, event.Title)
+	events.EventsMap[event.ID] = event
+	message := fmt.Sprintf(EventAddedMessage, event.Title)
+	return message, nil
 }
 
 func ShowEvents() {
 	fmt.Println(EventShowMessage)
-	for _, event := range EventsMap {
-		fmt.Printf("%s - %v \n", event.Title, event.StartAt.Format(timePattern))
+	for _, event := range events.EventsMap {
+		fmt.Printf("%s - %v - %s \n", event.Title, events.FormatDateEvent(event.StartAt), event.Priority)
 	}
-}
-
-func searchID(title string) (string, bool) {
-	for _, event := range EventsMap {
-		if title == event.Title {
-			return event.ID, true
-		}
-	}
-	return "", false
 }
 
 func DeleteEvent(title string) {
-	titleID, found := searchID(title)
+	titleID, found := events.SearchID(title)
 	if !found {
 		fmt.Printf(ErrorNotFoundDeleteEvent, title)
 		return
 	}
-	delete(EventsMap, titleID)
+	delete(events.EventsMap, titleID)
 	fmt.Printf(EventDeleteMessage, title)
 }
 
-func EditEvent(title string, dateStr string, priority events.Priority) {
-	titleID, found := searchID(title)
-	if !found {
-		fmt.Printf(ErrorNotFoundEditEvent, title)
-		return
+func EditTitleEvent(oldTitle string, newTitle string) (string, error) {
+	event, err := events.FindEventIDByTitle(oldTitle)
+	if err != nil {
+		return "", fmt.Errorf("%v: %s", err, oldTitle)
+	}
+	if !events.IsValidTitle(newTitle) {
+		return "", fmt.Errorf(events.ErrTitlePattern, newTitle)
+	}
+	event.Title = newTitle
+	events.EventsMap[event.ID] = event
+	message := fmt.Sprintf(EventEditTitleMessage, oldTitle, newTitle)
+	return message, nil
+}
+
+func EditDateEvent(title string, dateStr string) (string, error) {
+	event, err := events.FindEventIDByTitle(title)
+	if err != nil {
+		return "", fmt.Errorf("%v: %s", err, title)
 	}
 	t, err := events.IsValidDate(dateStr)
 	if err != nil {
-		fmt.Printf(ErrorParseMessage, err, title)
-		return
+		return "", fmt.Errorf(ErrorParseMessage, err, title)
+	}
+	event.StartAt = t
+	events.EventsMap[event.ID] = event
+	message := fmt.Sprintf(EventEditDateMessage, title, events.FormatDateEvent(t))
+	return message, nil
+}
+
+func EditPriorityEvent(title string, priority events.Priority) (string, error) {
+	event, err := events.FindEventIDByTitle(title)
+	if err != nil {
+		return "", fmt.Errorf("%v: %s", err, title)
 	}
 	if !events.IsValidPriority(priority) {
-		fmt.Printf(ErrorParseMessage, events.ErrorPriority, title)
-		return
+		return "", fmt.Errorf(events.ErrorPriority, title)
 	}
-
-	e := events.Event{
-		ID:       titleID,
-		Title:    title,
-		StartAt:  t,
-		Priority: priority,
-	}
-
-	EventsMap[titleID] = e
-	fmt.Printf(EventEditMessage, title)
+	event.Priority = priority
+	events.EventsMap[event.ID] = event
+	message := fmt.Sprintf(EventEditPriorityMessage, title, priority)
+	return message, nil
 }

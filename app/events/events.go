@@ -1,7 +1,7 @@
 package events
 
 import (
-	"errors"
+	"fmt"
 	"regexp"
 	"time"
 
@@ -9,12 +9,15 @@ import (
 	"github.com/google/uuid"
 )
 
+var EventsMap = make(map[string]Event)
+
 const validPattern = "^[a-zA-Z0-9\u0400-\u04FF ]{3,50}$"
 
 const (
-	ErrDateFormat    = "неверный формат даты"
-	ErrTitlePatternt = "неверное имя события"
-	ErrorPriority    = "неверный приоритет"
+	ErrDateFormat   = "неверный формат даты в событии: %s"
+	ErrTitlePattern = "неверное имя в событии: %s"
+	ErrorPriority   = "неверный приоритет в событии: %s"
+	ErrorAddEvent   = "ошибка: %v в событии: %s"
 )
 
 type Priority string
@@ -43,8 +46,7 @@ func IsValidPriority(priority Priority) bool {
 }
 
 func IsValidTitle(title string) bool {
-	pattern := validPattern
-	matched, err := regexp.MatchString(pattern, title)
+	matched, err := regexp.MatchString(validPattern, title)
 	if err != nil {
 		return false
 	}
@@ -54,7 +56,7 @@ func IsValidTitle(title string) bool {
 func IsValidDate(dateStr string) (time.Time, error) {
 	t, err := dateparse.ParseAny(dateStr)
 	if err != nil {
-		return time.Time{}, errors.New(ErrDateFormat)
+		return time.Time{}, err
 	}
 	return t,
 		nil
@@ -62,14 +64,14 @@ func IsValidDate(dateStr string) (time.Time, error) {
 
 func NewEvent(title string, dateStr string, priority Priority) (Event, error) {
 	if !IsValidPriority(priority) {
-		return Event{}, errors.New(ErrorPriority)
+		return Event{}, fmt.Errorf(ErrorPriority, title)
 	}
 	if !IsValidTitle(title) {
-		return Event{}, errors.New(ErrTitlePatternt)
+		return Event{}, fmt.Errorf(ErrTitlePattern, title)
 	}
 	t, err := IsValidDate(dateStr)
 	if err != nil {
-		return Event{}, err
+		return Event{}, fmt.Errorf(ErrorAddEvent, err, title)
 	}
 	return Event{
 		ID:       getNextID(),
