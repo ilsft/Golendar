@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/c-bata/go-prompt"
@@ -45,8 +46,8 @@ func (c *Cmd) executor(input string) {
 	}
 	l.logMessage(input)
 	if len(parts) == 0 {
-		c.handlePrint(emptyInput)
-		logger.LogError(emptyInput)
+		c.handlePrint(fmt.Sprint(emptyInput, "\n", deafaultMessage))
+		logger.LogError(fmt.Sprint(emptyInput, "\n", deafaultMessage))
 		return
 	}
 	cmd := strings.ToLower(parts[0])
