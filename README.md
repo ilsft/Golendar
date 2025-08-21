@@ -23,7 +23,7 @@
 git clone https://github.com/ilsft/Golendar.git
 cd Golendar
 go mod tidy
-go build -o calendar
+go build -o mycalendar
 ./calendar        # для Linux/macOS
 .\calendar.exe    # для Windows
 ```
@@ -47,7 +47,7 @@ list
 
 - Установить напоминание:
 
-add_rm "id из полученный после вызова <list>" "Встреча с командой" "2025-08-25 14:45"
+add_rm "id, из полученный после вызова команды list" "Встреча с командой" "2025-08-25 14:45"
 
 
 ## Тестирование
