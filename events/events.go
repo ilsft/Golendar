@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/ilsft/app/reminder"
-	validators "github.com/ilsft/app/utils"
+	"github.com/ilsft/Golendar/app/reminder"
+	validators "github.com/ilsft/Golendar/app/utils"
 )
 
 const (

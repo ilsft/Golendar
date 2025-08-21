@@ -5,8 +5,8 @@ import (
 
 	"github.com/c-bata/go-prompt"
 	"github.com/google/shlex"
-	"github.com/ilsft/app/calendar"
-	"github.com/ilsft/app/logger"
+	"github.com/ilsft/Golendar/app/calendar"
+	"github.com/ilsft/Golendar/app/logger"
 )
 
 type Cmd struct {

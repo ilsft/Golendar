@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	validators "github.com/ilsft/app/utils"
+	validators "github.com/ilsft/Golendar/app/utils"
 )
 
 const (

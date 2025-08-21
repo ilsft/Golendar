@@ -7,9 +7,9 @@ import (
 	"regexp"
 
 	"github.com/c-bata/go-prompt"
-	"github.com/ilsft/app/events"
-	"github.com/ilsft/app/logger"
-	validators "github.com/ilsft/app/utils"
+	"github.com/ilsft/Golendar/app/events"
+	"github.com/ilsft/Golendar/app/logger"
+	validators "github.com/ilsft/Golendar/app/utils"
 )
 
 const (
