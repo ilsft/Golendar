@@ -23,7 +23,7 @@
 git clone https://github.com/ilsft/Golendar.git
 cd Golendar
 go mod tidy
-go build -o mycalendar
+go build 
 ./calendar        # для Linux/macOS
 .\calendar.exe    # для Windows
 ```
