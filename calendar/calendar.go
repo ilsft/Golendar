@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ilsft/Golendar/app/events"
-	"github.com/ilsft/Golendar/app/storage"
-	validators "github.com/ilsft/Golendar/app/utils"
+	"github.com/ilsft/Golendar/events"
+	"github.com/ilsft/Golendar/storage"
+	validators "github.com/ilsft/Golendar/utils"
 )
 
 const (

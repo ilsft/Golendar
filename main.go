@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 
-	"github.com/ilsft/Golendar/app/calendar"
-	"github.com/ilsft/Golendar/app/cmd"
-	"github.com/ilsft/Golendar/app/logger"
-	"github.com/ilsft/Golendar/app/storage"
+	"github.com/ilsft/Golendar/calendar"
+	"github.com/ilsft/Golendar/cmd"
+	"github.com/ilsft/Golendar/logger"
+	"github.com/ilsft/Golendar/storage"
 )
 
 func main() {

@@ -1,4 +1,4 @@
-module github.com/ilsft/Golendar/app
+module github.com/ilsft/Golendar
 
 go 1.24.5
 

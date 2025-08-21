@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ilsft/Golendar/app/storage"
+	"github.com/ilsft/Golendar/storage"
 )
 
 type LogEntry struct {
