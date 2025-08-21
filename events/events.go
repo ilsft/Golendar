@@ -2,81 +2,81 @@ package events
 
 import (
 	"fmt"
-	"regexp"
 	"time"
 
-	"github.com/araddon/dateparse"
 	"github.com/google/uuid"
+	"github.com/ilsft/app/reminder"
+	validators "github.com/ilsft/app/utils"
 )
 
-var EventsMap = make(map[string]Event)
-
-const validPattern = "^[a-zA-Z0-9\u0400-\u04FF ]{3,50}$"
-
 const (
-	ErrDateFormat   = "неверный формат даты в событии: %s"
-	ErrTitlePattern = "неверное имя в событии: %s"
-	ErrorPriority   = "неверный приоритет в событии: %s"
-	ErrorAddEvent   = "ошибка: %v в событии: %s"
-)
-
-type Priority string
-
-const (
-	PriorityHigh Priority = "High"
-	PriorityLow  Priority = "Low"
+	ErrTitlePattern    = "неверное имя в событии: %s"
+	ErrorValidEvent    = "ошибка %w в событии: %s"
+	ErrorValidReminder = "ошибка %w в напоминании: %s"
 )
 
 type Event struct {
-	ID       string
-	Title    string
-	StartAt  time.Time
-	Priority Priority
+	ID       string             `json:"id"`
+	Title    string             `json:"title"`
+	StartAt  time.Time          `json:"start_at"`
+	Priority Priority           `json:"priority"`
+	Reminder *reminder.Reminder `json:"reminder"`
 }
 
 func getNextID() string {
 	return uuid.New().String()
 }
 
-func IsValidPriority(priority Priority) bool {
-	if priority != PriorityHigh && priority != PriorityLow {
-		return false
-	}
-	return true
-}
-
-func IsValidTitle(title string) bool {
-	matched, err := regexp.MatchString(validPattern, title)
+func NewEvent(title string, dateStr string, priority Priority) (*Event, error) {
+	err := validators.CheckTitleEmpty(title)
 	if err != nil {
-		return false
+		return nil, err
 	}
-	return matched
-}
-
-func IsValidDate(dateStr string) (time.Time, error) {
-	t, err := dateparse.ParseAny(dateStr)
+	if !validators.IsValidTitle(title) {
+		return nil, fmt.Errorf(ErrTitlePattern, title)
+	}
+	t, err := validators.ValidateDate(dateStr)
 	if err != nil {
-		return time.Time{}, err
+		return nil, fmt.Errorf(ErrorValidEvent, err, title)
 	}
-	return t,
-		nil
-}
 
-func NewEvent(title string, dateStr string, priority Priority) (Event, error) {
-	if !IsValidPriority(priority) {
-		return Event{}, fmt.Errorf(ErrorPriority, title)
+	errPriority := priority.ValidatePriority()
+	if errPriority != nil {
+		return nil, fmt.Errorf(ErrorValidEvent, errPriority, title)
 	}
-	if !IsValidTitle(title) {
-		return Event{}, fmt.Errorf(ErrTitlePattern, title)
-	}
-	t, err := IsValidDate(dateStr)
-	if err != nil {
-		return Event{}, fmt.Errorf(ErrorAddEvent, err, title)
-	}
-	return Event{
+
+	return &Event{
 		ID:       getNextID(),
 		Title:    title,
 		StartAt:  t,
 		Priority: priority,
+		Reminder: nil,
 	}, nil
+}
+
+func (e *Event) Update(title string, date string, priority Priority) error {
+	validEvent, err := NewEvent(title, date, priority)
+	if err != nil {
+		return err
+	}
+	e.Title = validEvent.Title
+	e.StartAt = validEvent.StartAt
+	return nil
+}
+
+func (e *Event) AddReminder(message string, at time.Time, notifier reminder.Notifier) (string, error) {
+	rem, err := reminder.NewReminder(message, at, notifier)
+	if err != nil {
+		return "", fmt.Errorf(ErrorValidReminder, err, message)
+	}
+
+	e.Reminder = rem
+	msg := e.Reminder.Start()
+	return msg, nil
+}
+
+func (e *Event) RemoveReminder() string {
+	msg := e.Reminder.Stop()
+	e.Reminder = nil
+	return msg
 }
