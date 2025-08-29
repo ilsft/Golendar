@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	ErrTitlePattern    = "неверное имя в событии: %s"
-	ErrorValidEvent    = "ошибка %w в событии: %s"
+	errTitlePattern    = "неверное имя в событии: %s"
+	errorValidEvent    = "ошибка %w в событии: %s"
 	ErrorValidReminder = "ошибка %w в напоминании: %s"
 )
 
@@ -33,16 +33,16 @@ func NewEvent(title string, dateStr string, priority Priority) (*Event, error) {
 		return nil, err
 	}
 	if !validators.IsValidTitle(title) {
-		return nil, fmt.Errorf(ErrTitlePattern, title)
+		return nil, fmt.Errorf(errTitlePattern, title)
 	}
 	t, err := validators.ValidateDate(dateStr)
 	if err != nil {
-		return nil, fmt.Errorf(ErrorValidEvent, err, title)
+		return nil, fmt.Errorf(errorValidEvent, err, title)
 	}
 
 	errPriority := priority.ValidatePriority()
 	if errPriority != nil {
-		return nil, fmt.Errorf(ErrorValidEvent, errPriority, title)
+		return nil, fmt.Errorf(errorValidEvent, errPriority, title)
 	}
 
 	return &Event{

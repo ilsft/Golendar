@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/c-bata/go-prompt"
@@ -12,11 +14,15 @@ import (
 
 type Cmd struct {
 	calendar *calendar.Calendar
+	logger   *HistoryLogger
+	reader   *bufio.Reader
 }
 
-func NewCmd(c *calendar.Calendar) *Cmd {
+func NewCmd(c *calendar.Calendar, logger *HistoryLogger) *Cmd {
 	return &Cmd{
 		calendar: c,
+		logger:   logger,
+		reader:   bufio.NewReader(os.Stdin),
 	}
 }
 
@@ -29,11 +35,10 @@ func (c *Cmd) completer(d prompt.Document) []prompt.Suggest {
 		{Text: "add_rm", Description: "Добавить напоминание"},
 		{Text: "stop_rm", Description: "Остановить напоминание"},
 		{Text: "remove_rm", Description: "Удалить напоминание"},
-		{Text: "log", Description: "Показать логи"},
+		{Text: "history", Description: "Показать историю ввода/вывода"},
 		{Text: "help", Description: "Показать справку"},
 		{Text: "exit", Description: "Выйти из программы"},
 	}
-
 	return prompt.FilterHasPrefix(suggestions, d.GetWordBeforeCursor(), true)
 }
 
@@ -44,7 +49,8 @@ func (c *Cmd) executor(input string) {
 		logger.LogError(err.Error())
 		return
 	}
-	l.logMessage(input)
+
+	c.logger.logMessage(input)
 	if len(parts) == 0 {
 		c.handlePrint(fmt.Sprint(emptyInput, "\n", deafaultMessage))
 		logger.LogError(fmt.Sprint(emptyInput, "\n", deafaultMessage))
@@ -55,18 +61,18 @@ func (c *Cmd) executor(input string) {
 	case "add":
 		c.handleAddCmd(parts)
 	case "remove":
-		c.handleDeleteCmd()
+		c.handleDeleteCmd(parts)
 	case "update":
 		c.handleEditeCmd(parts)
 	case "add_rm":
 		c.handleAddReminderCmd(parts)
 	case "stop_rm":
-		c.handleStopReminderCmd()
+		c.handleStopReminderCmd(parts)
 	case "remove_rm":
-		c.handleDeleteReminderCmd()
+		c.handleDeleteReminderCmd(parts)
 	case "list":
 		c.handleShowEventsCmd()
-	case "log":
+	case "history":
 		c.handleShowLogsCmd()
 	case "help":
 		c.handleShowHelpCmd()
@@ -79,11 +85,13 @@ func (c *Cmd) executor(input string) {
 	err = c.calendar.Save()
 	if err != nil {
 		c.handlePrint(err.Error())
+		logger.LogError(err.Error())
 		return
 	}
-	err = l.saveLogs()
+	err = c.logger.saveLogs()
 	if err != nil {
 		c.handlePrint(err.Error())
+		logger.LogError(err.Error())
 		return
 	}
 
@@ -95,10 +103,10 @@ func (c *Cmd) Run() {
 		c.completer,
 		prompt.OptionPrefix("> "),
 	)
-	err := l.loadLogs()
+	err := c.logger.loadLogs()
 	if err != nil {
 		c.handlePrint(err.Error())
-
+		logger.LogError(err.Error())
 	}
 	go func() {
 		for msg := range c.calendar.Notification {

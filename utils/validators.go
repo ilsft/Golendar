@@ -10,12 +10,14 @@ import (
 )
 
 const (
-	validPattern = "^[a-zA-Z0-9\u0400-\u04FF ]{3,50}$"
+	validPattern = "^[a-zA-Z\\p{Cyrillic}0-9 ]{3,50}$"
 	timePattern  = "Mon 2006/01/02 - 15:04"
 )
 
-var ErrEmptyTitle = errors.New("пустая строка содержит только пробелы")
-var ErrDateAlreadyPassed = errors.New("указанная дата уже прошла")
+var (
+	ErrEmptyTitle        = errors.New("пустая строка содержит только пробелы")
+	ErrDateAlreadyPassed = errors.New("указанная дата уже прошла")
+)
 
 func FormatDateEvent(date time.Time) string {
 	return date.Format(timePattern)

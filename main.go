@@ -23,6 +23,9 @@ func main() {
 	}
 	defer file.Close()
 
-	cli := cmd.NewCmd(c)
+	historyStorage := storage.NewJsonStorage("iohistory.json")
+	historyLogger := cmd.NewHistoryLogger(historyStorage)
+
+	cli := cmd.NewCmd(c, historyLogger)
 	cli.Run()
 }

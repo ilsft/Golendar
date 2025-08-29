@@ -7,25 +7,26 @@ import (
 	"strings"
 
 	"github.com/ilsft/Golendar/events"
+	"github.com/ilsft/Golendar/logger"
 	"github.com/ilsft/Golendar/storage"
 	validators "github.com/ilsft/Golendar/utils"
 )
 
 const (
-	EventAddedMessage     = "Событие: %s добавлено"
-	EventDeleteMessage    = "Событие: %s удалено"
-	EventEditTitleMessage = "Событие: %s обновлено на %s - %s"
-	ReminderAddMessage    = "Напоминание: %s добавлено \n%s"
-	ReminderDeleteMessage = "Напоминание удалено \n%s"
-	ReminderStopMessage   = "Напоминание: %s остановлено"
+	eventAddedMessage     = "Событие: %s добавлено"
+	eventDeleteMessage    = "Событие: %s удалено"
+	eventEditTitleMessage = "Событие: %s обновлено на %s - %s"
+	reminderAddMessage    = "Напоминание: %s добавлено \n%s"
+	reminderDeleteMessage = "Напоминание удалено \n%s"
+	reminderCloseMessage  = "Канал Notification закрыт"
 )
 
-const (
-	ErrorNotFoundID   = "не найдено событие с ID %s"
-	ErrorEmptyList    = "событий нет"
-	ErrorSerialJSON   = "ошибка сериализации: %v"
-	ErrorDeSerialJSON = "ошибка десериализации: %v"
-	ErrorNotFoundRem  = "нет напоминания для удаления"
+var (
+	errorNotFoundID   = "не найдено событие с ID %s"
+	errorEmptyList    = "событий нет"
+	errorSerialJSON   = "ошибка сериализации: %v"
+	errorDeSerialJSON = "ошибка десериализации: %v"
+	errorNotFoundRem  = "нет напоминания для удаления"
 )
 
 type Calendar struct {
@@ -48,12 +49,12 @@ func (c *Calendar) AddEvent(title string, dateStr string, priority events.Priori
 		return "", err
 	}
 	c.CalendarEvents[event.ID] = event
-	return fmt.Sprintf(EventAddedMessage, event.Title), nil
+	return fmt.Sprintf(eventAddedMessage, event.Title), nil
 }
 
 func (c *Calendar) ShowEvents() string {
 	if len(c.CalendarEvents) == 0 {
-		return ErrorEmptyList
+		return errorEmptyList
 	}
 	var msgs []string
 	for _, event := range c.CalendarEvents {
@@ -73,7 +74,7 @@ func (c *Calendar) ShowEvents() string {
 func (c *Calendar) GetEventByID(id string) (*events.Event, error) {
 	e, exist := c.CalendarEvents[id]
 	if !exist {
-		return nil, fmt.Errorf(ErrorNotFoundID, id)
+		return nil, fmt.Errorf(errorNotFoundID, id)
 	}
 	return e, nil
 }
@@ -84,7 +85,7 @@ func (c *Calendar) DeleteEvent(id string) (string, error) {
 		return "", err
 	}
 	delete(c.CalendarEvents, id)
-	return fmt.Sprintf(EventDeleteMessage, event.Title), nil
+	return fmt.Sprintf(eventDeleteMessage, event.Title), nil
 }
 
 func (c *Calendar) EditEvent(id string, newTitle string, date string, priority events.Priority) (string, error) {
@@ -97,13 +98,13 @@ func (c *Calendar) EditEvent(id string, newTitle string, date string, priority e
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf(EventEditTitleMessage, oldTitle, newTitle, date), nil
+	return fmt.Sprintf(eventEditTitleMessage, oldTitle, newTitle, date), nil
 }
 
 func (c *Calendar) Save() error {
 	data, err := json.Marshal(c)
 	if err != nil {
-		return fmt.Errorf(ErrorSerialJSON, err)
+		return fmt.Errorf(errorSerialJSON, err)
 	}
 	err = c.Storage.Save(data)
 	if err != nil {
@@ -126,7 +127,7 @@ func (c *Calendar) Load() error {
 	}
 	err = json.Unmarshal(data, c)
 	if err != nil {
-		return fmt.Errorf(ErrorDeSerialJSON, err)
+		return fmt.Errorf(errorDeSerialJSON, err)
 	}
 	return nil
 }
@@ -144,7 +145,7 @@ func (c *Calendar) SetEventReminder(id string, message string, time string) (str
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf(ReminderAddMessage, event.Reminder.Message, msg), nil
+	return fmt.Sprintf(reminderAddMessage, event.Reminder.Message, msg), nil
 }
 
 func (c *Calendar) RemoveEventReminder(id string) (string, error) {
@@ -153,10 +154,10 @@ func (c *Calendar) RemoveEventReminder(id string) (string, error) {
 		return "", err
 	}
 	if event.Reminder == nil {
-		return "", errors.New(ErrorNotFoundRem)
+		return "", errors.New(errorNotFoundRem)
 	}
 	msg := event.RemoveReminder()
-	return fmt.Sprintf(ReminderDeleteMessage, msg), nil
+	return fmt.Sprintf(reminderDeleteMessage, msg), nil
 }
 
 func (c *Calendar) CancelEventReminder(id string) (string, error) {
@@ -170,4 +171,9 @@ func (c *Calendar) CancelEventReminder(id string) (string, error) {
 
 func (c *Calendar) Notify(msg string) {
 	c.Notification <- msg
+}
+
+func (c *Calendar) Close() {
+	logger.LogInfo(reminderCloseMessage)
+	close(c.Notification)
 }

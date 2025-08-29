@@ -4,79 +4,78 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"regexp"
 
-	"github.com/c-bata/go-prompt"
 	"github.com/ilsft/Golendar/events"
 	"github.com/ilsft/Golendar/logger"
 	validators "github.com/ilsft/Golendar/utils"
 )
 
 const (
-	errLenAddMessage         = "Формат: add \"название события\" \"дата и время\" \"приоритет\""
-	errLenUpdMessage         = "Формат: update \"id события\" \"название события\" \"дата и время\" \"приоритет\""
-	errLenAddReminderMessage = "Формат: add_rm \"id события\" \"название напоминания\" \"дата и время\""
+	unknownCommand     = "Неизвестная команда:"
+	deafaultMessage    = "Введите 'help' для списка команд"
+	emptyInput         = "Пустой ввод, повторите попытку"
+	inputNumberMessage = "Введите номер события: "
 )
+
+var (
+	errEmptyTitle     = "запрещено создавать пустые события"
+	errPastTimeTravel = "запрещено путешествовать в прошлое"
+)
+
+const patternTime = "2006-01-02 15:04:05"
+
+const eventShowMessage = "📅Cписок событий✅"
 
 const (
-	unknownCommand        = "Неизвестная команда:"
-	enterEventTitlePrompt = "Введите название события:"
-	deafaultMessage       = "Введите 'help' для списка команд"
-	emptyInput            = "Пустой ввод, повторите попытку"
+	errAddFormat      = `add "имя события" "дата и время" "приоритет"`
+	errUpdateFormat   = `введите: "новое имя события" "новая дата и время" "новый приоритет"`
+	errReminderFormat = `введите: "имя напоминания" "дата и время"`
 )
 
-const (
-	ErrEmptyTitle     = "Запрещено создавать пустые события"
-	ErrPastTimeTravel = "Запрещено путешествовать в прошлое"
-)
+const helpMessage = `
+╔═════════════════════════════════════════════════╗
+║                Справка по командам              ║
+╚═════════════════════════════════════════════════╝
 
-const EventShowMessage = "📅Cписок событий✅"
-const helpMessage = `add ✅ — добавить событие, ` + errLenAddMessage + `
-remove ❌ — удалить событие, ввести название события вручную или выбрать из списка через <tab>
-list 📒 — вывести все события в формате id - название - дата и время - приоритет
-update ✏️ — изменить событие, найти id события по команде <list>, 
-далее ввести данные, ` + errLenUpdMessage + `
-add_rm 🔔 — добавить напоминание
-stop_rm ⏸️ — остановить напоминание
-remove_rm 🗑️ — удалить напоминание
-log 📜 — показать логи
-exit 🏁 — выход`
+───────────[ Создание и просмотр событий ]───────────
+  add      ✅    ┆ создать событие
+                 ┆ формат: ` + errAddFormat + `
+  list     📒    ┆ список всех событий 
+                 ┆ (id - имя события - дата и время - приоритет)
 
-var idRegexp = regexp.MustCompile(`ID:([\w-]+)`)
+────────────[ Работа с существующими событиями ]──────
+  remove    ❌  ┆ удалить событие
+  update    ✏️   ┆ изменить данные
+                ┆ формат: ` + errUpdateFormat + `
+  add_rm    🔔  ┆ добавить напоминание
+                ┆ формат: ` + errReminderFormat + `
+  stop_rm   ⏸️   ┆ остановить напоминание
+  remove_rm 🗑️   ┆ удалить напоминание
+		
+──────────────[ Сервисные команды ]───────────────
+  history   📜   ┆ показать журнал действий
+  exit      🏁   ┆ выход из программы
 
-func (c *Cmd) completerEvent(d prompt.Document) []prompt.Suggest {
-	suggestions := []prompt.Suggest{}
-	for _, event := range c.calendar.CalendarEvents {
-		suggestions = append(suggestions, prompt.Suggest{
-			Text:        fmt.Sprintf("%s | ID:%s", event.Title, event.ID[:4]),
-			Description: fmt.Sprintf("%s | %s ", event.StartAt.Format("2006-01-02"), event.Priority),
-		})
-	}
-	return prompt.FilterHasPrefix(suggestions, d.GetWordBeforeCursor(), true)
-}
 
-func (c *Cmd) searchID(input string) string {
-	matches := idRegexp.FindStringSubmatch(input)
-	if len(matches) > 1 {
-		shortID := matches[1]
-		for _, event := range c.calendar.CalendarEvents {
-			if len(event.ID) > 4 && event.ID[:4] == shortID {
-				return event.ID
-			}
-		}
-	}
-	return (input)
-}
+═══════════[ Как работают команды для событий ]═══════════
+1. Введите часть имени события:
+       пример → "meet"
+2. Программа покажет список совпадений:
 
-func (c *Cmd) handleEventPrompt(f func(string) (string, error)) (string, error) {
-	t := prompt.Input(enterEventTitlePrompt, c.completerEvent)
-	fullEventID := c.searchID(t)
-	msg, err := f(fullEventID)
-	if err != nil {
-		return "", err
-	}
-	return msg, nil
-}
+   ┌───┬───────────────────────────────┬───────────────────┐
+   │ № │ Имя события                   │ Дата и время      │
+   ├───┼───────────────────────────────┼───────────────────┤
+   │ 1 │ Meeting с клиентом            │ 25.08.2025 14:00  │
+   │ 2 │ Meeting с командой            │ 26.08.2025 10:00  │
+   └───┴───────────────────────────────┴───────────────────┘
+
+3. Введите номер события (например: "2").
+4. Команда применится к выбранному событию.
+
+─── Различие по вводимым данным:
+  • remove / stop_rm / remove_rm → только номер
+  • update → номер + новые данные ` + errUpdateFormat + `
+`
 
 func (c *Cmd) notifyResult(msg string, err error) bool {
 	if err != nil {
@@ -89,10 +88,19 @@ func (c *Cmd) notifyResult(msg string, err error) bool {
 	return true
 }
 
+func (c *Cmd) notifyError(err error) bool {
+	if err != nil {
+		c.handlePrint(err.Error())
+		logger.LogError(err.Error())
+		return false
+	}
+	return true
+}
+
 func (c *Cmd) handleAddCmd(parts []string) {
 	if len(parts) < 4 {
-		c.handlePrint(errLenAddMessage)
-		logger.LogError(errLenAddMessage)
+		c.handlePrint(errAddFormat)
+		logger.LogError(errAddFormat)
 		return
 	}
 	title := parts[1]
@@ -101,84 +109,116 @@ func (c *Cmd) handleAddCmd(parts []string) {
 	msg, err := c.calendar.AddEvent(title, date, priority)
 	switch {
 	case errors.Is(err, validators.ErrEmptyTitle):
-		c.handlePrint(ErrEmptyTitle)
-		logger.LogError(ErrEmptyTitle)
+		c.handlePrint(errEmptyTitle)
+		logger.LogError(errEmptyTitle)
 	case errors.Is(err, validators.ErrDateAlreadyPassed):
-		c.handlePrint(ErrPastTimeTravel)
-		logger.LogError(ErrPastTimeTravel)
+		c.handlePrint(errPastTimeTravel)
+		logger.LogError(errPastTimeTravel)
 	default:
 		if !c.notifyResult(msg, err) {
 			return
 		}
 	}
 }
-func (c *Cmd) handleDeleteCmd() {
-	msg, err := c.handleEventPrompt(c.calendar.DeleteEvent)
+
+func (c *Cmd) handleDeleteCmd(title []string) {
+	event, err := c.selectEvents(title)
+	if !c.notifyError(err) {
+		return
+	}
+	msg, err := c.calendar.DeleteEvent(event.ID)
 	if !c.notifyResult(msg, err) {
 		return
 	}
 }
+
 func (c *Cmd) handleEditeCmd(parts []string) {
-	if len(parts) < 5 {
-		c.handlePrint(errLenUpdMessage)
-		logger.LogError(errLenUpdMessage)
+	event, err := c.selectEvents(parts)
+	if !c.notifyError(err) {
 		return
 	}
-	id := parts[1]
-	title := parts[2]
-	date := parts[3]
-	priority := events.Priority(parts[4])
-	msg, err := c.calendar.EditEvent(id, title, date, priority)
+	parts, err = c.readAndParseInput(errUpdateFormat)
+	if !c.notifyError(err) {
+		return
+	}
+	if len(parts) < 3 {
+		c.handlePrint(errUpdateFormat)
+		logger.LogError(errUpdateFormat)
+		return
+	}
+	newTitle := parts[0]
+	newDate := parts[1]
+	newPriority := events.Priority(parts[2])
+	msg, err := c.calendar.EditEvent(event.ID, newTitle, newDate, newPriority)
 	if !c.notifyResult(msg, err) {
 		return
 	}
 }
+
 func (c *Cmd) handleAddReminderCmd(parts []string) {
-	if len(parts) < 4 {
-		c.handlePrint(errLenAddReminderMessage)
-		logger.LogError(errLenAddReminderMessage)
+	event, err := c.selectEventsByReminder(false, parts)
+	if !c.notifyError(err) {
 		return
 	}
-	id := parts[1]
-	message := parts[2]
-	time := parts[3]
-	msg, err := c.calendar.SetEventReminder(id, message, time)
+	parts, err = c.readAndParseInput(errReminderFormat)
+	if !c.notifyError(err) {
+		return
+	}
+	if len(parts) < 2 {
+		c.handlePrint(errReminderFormat)
+		logger.LogError(errReminderFormat)
+		return
+	}
+	message := parts[0]
+	time := parts[1]
+	msg, err := c.calendar.SetEventReminder(event.ID, message, time)
 	if !c.notifyResult(msg, err) {
 		return
 	}
 }
-func (c *Cmd) handleStopReminderCmd() {
-	msg, err := c.handleEventPrompt(c.calendar.CancelEventReminder)
+
+func (c *Cmd) handleStopReminderCmd(title []string) {
+	event, err := c.selectEventsByReminder(true, title)
+	if !c.notifyError(err) {
+		return
+	}
+	msg, err := c.calendar.CancelEventReminder(event.ID)
 	if !c.notifyResult(msg, err) {
 		return
 	}
 }
-func (c *Cmd) handleDeleteReminderCmd() {
-	msg, err := c.handleEventPrompt(c.calendar.RemoveEventReminder)
+
+func (c *Cmd) handleDeleteReminderCmd(title []string) {
+	event, err := c.selectEventsByReminder(true, title)
+	if !c.notifyError(err) {
+		return
+	}
+	msg, err := c.calendar.RemoveEventReminder(event.ID)
 	if !c.notifyResult(msg, err) {
 		return
 	}
 }
 
 func (c *Cmd) handleShowEventsCmd() {
-	c.handlePrint(EventShowMessage)
-	c.calendar.Notify(c.calendar.ShowEvents())
+	c.handlePrint(eventShowMessage)
+	c.handlePrint(c.calendar.ShowEvents())
 }
 
 func (c *Cmd) handleShowLogsCmd() {
-	fmt.Println(l.showLogs())
+	fmt.Println(c.logger.showLogs())
 }
+
 func (c *Cmd) handleShowHelpCmd() {
-	c.handlePrint(helpMessage)
+	fmt.Print(helpMessage)
 }
 
 func (c *Cmd) handlePrint(msg string) {
 	fmt.Println(msg)
-	l.logMessage(msg)
+	c.logger.logMessage(msg)
 }
 
 func (c *Cmd) handleExitCmd() {
-	close(c.calendar.Notification)
+	c.calendar.Close()
 	os.Exit(0)
 }
 

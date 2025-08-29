@@ -10,76 +10,72 @@ import (
 	"github.com/ilsft/Golendar/storage"
 )
 
-type LogEntry struct {
+type HistoryEntry struct {
 	Time    time.Time `json:"time"`
 	Message string    `json:"message"`
 }
 
-type Logger struct {
-	Logs    []LogEntry
+type HistoryLogger struct {
+	Logs    []HistoryEntry
 	Storage storage.Store
 }
 
 var mu sync.Mutex
 
-var logsStorage = storage.NewJsonStorage("iohistory.json")
-var l = NewLogs(logsStorage)
-
-func NewLogs(s storage.Store) *Logger {
-	return &Logger{
-		Logs:    make([]LogEntry, 0),
+func NewHistoryLogger(s storage.Store) *HistoryLogger {
+	return &HistoryLogger{
+		Logs:    make([]HistoryEntry, 0),
 		Storage: s,
 	}
 }
 
-func (l *Logger) logMessage(message string) {
+func (hl *HistoryLogger) logMessage(message string) {
 	mu.Lock()
 	defer mu.Unlock()
-	t := time.Now()
-	entry := LogEntry{
-		Time:    t,
+	entry := HistoryEntry{
+		Time:    time.Now(),
 		Message: message,
 	}
-	l.Logs = append(l.Logs, entry)
+	hl.Logs = append(hl.Logs, entry)
 }
 
-func (l *Logger) loadLogs() error {
-	data, err := l.Storage.Load()
+func (hl *HistoryLogger) loadLogs() error {
+	data, err := hl.Storage.Load()
 	if err != nil {
 		return err
 	}
 	if len(data) == 0 {
-		if l.Logs == nil {
-			l.Logs = make([]LogEntry, 0)
+		if hl.Logs == nil {
+			hl.Logs = make([]HistoryEntry, 0)
 		}
 		return nil
 	}
-	err = json.Unmarshal(data, l)
+	err = json.Unmarshal(data, hl)
 	if err != nil {
 		return (err)
 	}
 	return nil
 }
 
-func (l *Logger) saveLogs() error {
-	data, err := json.Marshal(l)
+func (hl *HistoryLogger) saveLogs() error {
+	data, err := json.Marshal(hl)
 	if err != nil {
 		return (err)
 	}
-	err = l.Storage.Save(data)
+	err = hl.Storage.Save(data)
 	if err != nil {
 		return (err)
 	}
 	return nil
 }
 
-func (l *Logger) showLogs() string {
-	if len(l.Logs) == 0 {
+func (hl *HistoryLogger) showLogs() string {
+	if len(hl.Logs) == 0 {
 		return ""
 	}
 	var logs []string
-	for _, entry := range l.Logs {
-		log := (fmt.Sprintf("%s - %s", entry.Time.Format("2006-01-02 15:04:05"), entry.Message))
+	for _, entry := range hl.Logs {
+		log := (fmt.Sprintf("%s - %s", entry.Time.Format(patternTime), entry.Message))
 		logs = append(logs, log)
 	}
 	return strings.Join(logs, "\n")
